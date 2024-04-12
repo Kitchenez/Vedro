@@ -1,0 +1,32 @@
+<resources>
+    <string name="app_name">MireaProject</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="menu_home">Home</string>
+    <string name="menu_gallery">Gallery</string>
+    <string name="menu_slideshow">Slideshow</string>
+    <string name="menu_datafragment">Data</string>
+    <string name="menu_webviewfragment">Webview</string>
+    <string name="menu_camerafragment">Camera</string>
+    <string name="menu_sensordatafragment">Sensor</string>
+    <string name="menu_microphonefragment">Microphone</string>
+    <string name="preview">Preview</string>
+    <string name="take_photo">Take a photo</string>
+    <string name="hint_description">Enter description...</string>
+    <string name="photo_preview">Preview</string>
+    <string name="create_collage">Create collage</string>
+    <string name="username">Username</string>
+    <string name="email">Email</string>
+    <string name="save">Save</string>
+    <string name="choose_file">Choose file</string>
+    <string name="encryption_key">Encryption key</string>
+    <string name="encrypt">Encrypt</string>
+    <string name="decrypt">Decrypt</string>
+    <string name="create_new_record">Create new record</string>
+
+</resources>

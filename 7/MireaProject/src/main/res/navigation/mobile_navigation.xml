@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@+id/nav_home">
+
+    <fragment
+        android:id="@+id/nav_home"
+        android:name="ru.mirea.kuzenkov.mireaproject.ui.home.HomeFragment"
+        android:label="@string/menu_home"
+        tools:layout="@layout/fragment_home" />
+    <fragment
+        android:id="@+id/nav_gallery"
+        android:name="ru.mirea.kuzenkov.mireaproject.ui.gallery.GalleryFragment"
+        android:label="@string/menu_gallery"
+        tools:layout="@layout/fragment_gallery" />
+    <fragment
+        android:id="@+id/nav_slideshow"
+        android:name="ru.mirea.kuzenkov.mireaproject.ui.slideshow.SlideshowFragment"
+        android:label="Slideshow"
+        tools:layout="@layout/fragment_slideshow" />
+    <fragment
+        android:id="@+id/nav_datafragment"
+        android:name="ru.mirea.kuzenkov.mireaproject.ui.data.DataFragment"
+        android:label="DataFragment"
+        tools:layout="@layout/fragment_data" />
+    <fragment
+        android:id="@+id/nav_webview"
+        android:name="ru.mirea.kuzenkov.mireaproject.ui.webview.WebViewFragment"
+        android:label="WebViewFragment"
+        tools:layout="@layout/fragment_webview" />
+    <fragment
+        android:id="@+id/nav_downloadfragment"
+        android:name="ru.mirea.kuzenkov.mireaproject.DownloadFragment"
+        android:label="Download"
+        tools:layout="@layout/fragment_download" />
+    <fragment
+        android:id="@+id/nav_sensor_data"
+        android:name="ru.mirea.kuzenkov.mireaproject.SensorDataFragment"
+        android:label="Sensor Data"
+        tools:layout="@layout/fragment_sensor_data" />
+    <fragment
+        android:id="@+id/nav_camera"
+        android:name="ru.mirea.kuzenkov.mireaproject.CameraFragment"
+        android:label="Camera"
+        tools:layout="@layout/fragment_camera" />
+    <fragment
+        android:id="@+id/nav_microphone"
+        android:name="ru.mirea.kuzenkov.mireaproject.MicrophoneFragment"
+        android:label="Microphone"
+        tools:layout="@layout/fragment_microphone" />
+    <fragment
+        android:id="@+id/nav_profile"
+        android:name="ru.mirea.kuzenkov.mireaproject.ProfileFragment"
+        android:label="Profile"
+        tools:layout="@layout/fragment_profile" />
+    <fragment
+        android:id="@+id/nav_cryptography"
+        android:name="ru.mirea.kuzenkov.mireaproject.ui.cryptography.FileCryptographyFragment"
+        android:label="Cryptography"
+        tools:layout="@layout/fragment_file_cryptography" />
+    <fragment
+        android:id="@+id/weatherFragment"
+        android:name="ru.mirea.kuzenkov.mireaproject.WeatherFragment"
+        android:label="WeatherFragment" />
+
+</navigation>

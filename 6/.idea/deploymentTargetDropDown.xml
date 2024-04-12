@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="deploymentTargetDropDown">
+    <value>
+      <entry key="EmployeeDB">
+        <State />
+      </entry>
+      <entry key="InternalFileStorage">
+        <State />
+      </entry>
+      <entry key="MireaProject">
+        <State />
+      </entry>
+      <entry key="Notebook">
+        <State />
+      </entry>
+      <entry key="app">
+        <State />
+      </entry>
+      <entry key="app.internalfilestorage">
+        <State />
+      </entry>
+      <entry key="securesharedpreferences">
+        <State />
+      </entry>
+    </value>
+  </component>
+</project>
