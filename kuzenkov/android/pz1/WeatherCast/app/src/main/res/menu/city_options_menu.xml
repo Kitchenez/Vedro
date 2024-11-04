@@ -1,0 +1,11 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_add_to_favorites"
+        android:title="Add to Favorites"
+        android:icon="@android:drawable/ic_menu_add" />
+
+    <item
+        android:id="@+id/action_remove_from_favorites"
+        android:title="Remove from Favorites"
+        android:icon="@android:drawable/ic_menu_delete" />
+</menu>

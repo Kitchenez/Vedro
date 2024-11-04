@@ -1,0 +1,200 @@
+res\layout\activity_authentication.xml
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+res\layout\activity_city_detail.xml
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+res\layout\activity_home.xml
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tvCityName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="City Name"
+        android:textSize="24sp" />
+
+    <include layout="@layout/include_weather_summary" />
+
+    <Button
+        android:id="@+id/btnViewDetails"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="View Details" />
+</LinearLayout>
+
+
+res\layout\activity_settings.xml
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+res\layout\dialog_add_city.xml
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+res\layout\fragment_favorite_cities.xml
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+res\layout\include_weather_summary.xml
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/tvWeatherCondition"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Sunny"
+        android:textSize="18sp" />
+
+    <TextView
+        android:id="@+id/tvTemperature"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="25°C"
+        android:textSize="48sp" />
+</LinearLayout>
+
+
+res\layout\item_city.xml
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+res\menu\city_options_menu.xml
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_add_to_favorites"
+        android:title="Add to Favorites"
+        android:icon="@android:drawable/ic_menu_add" />
+
+    <item
+        android:id="@+id/action_remove_from_favorites"
+        android:title="Remove from Favorites"
+        android:icon="@android:drawable/ic_menu_delete" />
+</menu>
+
+
+res\menu\main_menu.xml
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_settings"
+        android:title="Settings"
+        android:icon="@drawable/ic_settings_32"/>
+</menu>
+
+
+res\mipmap-anydpi\ic_launcher.xml
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
+
+res\mipmap-anydpi\ic_launcher_round.xml
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
+
+res\values\colors.xml
+<resources>
+    <color name="primaryColor">#6200EE</color>
+    <color name="primaryDarkColor">#3700B3</color>
+    <color name="accentColor">#03DAC5</color>
+    <color name="backgroundColor">#FFFFFF</color>
+    <color name="textColorPrimary">#000000</color>
+    <color name="textColorSecondary">#757575</color>
+</resources>
+
+
+res\values\dimens.xml
+<resources>
+    <dimen name="padding_small">4dp</dimen>
+    <dimen name="padding_medium">8dp</dimen>
+    <dimen name="padding_large">16dp</dimen>
+    <dimen name="text_size_small">12sp</dimen>
+    <dimen name="text_size_medium">16sp</dimen>
+    <dimen name="text_size_large">20sp</dimen>
+</resources>
+
+
+res\values\strings.xml
+<resources>
+    <string name="app_name">WeatherNow</string>
+    <string name="current_weather">Current Weather</string>
+    <string name="favorite_cities">Favorite Cities</string>
+    <string name="settings">Settings</string>
+    <string name="add_to_favorites">Add to Favorites</string>
+    <string name="login">Log In</string>
+    <string name="register">Register</string>
+    <string name="view_details">View Details</string>
+</resources>
+
+
+res\values\styles.xml
+<resources>
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="colorPrimary">@color/primaryColor</item>
+        <item name="colorPrimaryDark">@color/primaryDarkColor</item>
+        <item name="colorAccent">@color/accentColor</item>
+    </style>
+</resources>
+
+
+res\values\themes.xml
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.WeatherCast" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize your light theme here. -->
+        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    </style>
+
+    <style name="Theme.WeatherCast" parent="Base.Theme.WeatherCast" />
+</resources>
+
+res\values-night\themes.xml
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.WeatherCast" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize your dark theme here. -->
+        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+    </style>
+</resources>
+

@@ -1,0 +1,420 @@
+weathercast\MainActivity.java
+package ru.mirea.kuzenkov.weathercast;
+
+import android.os.Bundle;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
+import ru.mirea.kuzenkov.weathercast.databinding.ActivityHomeBinding;
+
+public class MainActivity extends AppCompatActivity {
+
+    private ActivityHomeBinding binding;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        binding = ActivityHomeBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+
+        // Пример использования View Binding для элемента TextView
+        binding.tvCityName.setText("Moscow");
+    }
+}
+
+
+weathercast\data\local\SQLiteSettingsDataSource.java
+package ru.mirea.kuzenkov.weathercast.data.local;
+
+public class SQLiteSettingsDataSource {
+}
+
+
+weathercast\data\local\SQLiteUserDataSource.java
+package ru.mirea.kuzenkov.weathercast.data.local;
+
+public class SQLiteUserDataSource {
+}
+
+
+weathercast\data\repository\SettingsRepository.java
+package ru.mirea.kuzenkov.weathercast.data.repository;
+
+import ru.mirea.kuzenkov.weathercast.domain.model.Settings;
+
+public interface SettingsRepository {
+    Settings getSettings();
+    void saveSettings(Settings settings);
+}
+
+
+weathercast\data\repository\UserRepository.java
+package ru.mirea.kuzenkov.weathercast.data.repository;
+
+import java.util.List;
+import ru.mirea.kuzenkov.weathercast.domain.model.User;
+
+public interface UserRepository {
+    User authenticate(String username, String password);
+    List<String> getFavoriteCities(String userId);
+}
+
+
+weathercast\data\repository\WeatherRepository.java
+package ru.mirea.kuzenkov.weathercast.data.repository;
+
+import ru.mirea.kuzenkov.weathercast.domain.model.WeatherForecast;
+
+public interface WeatherRepository {
+    WeatherForecast getWeather(String cityName);
+}
+
+
+weathercast\data\repository\mock\MockSettingsRepository.java
+package ru.mirea.kuzenkov.weathercast.data.repository.mock;
+
+import ru.mirea.kuzenkov.weathercast.domain.repositories.SettingsRepository;
+import ru.mirea.kuzenkov.weathercast.domain.model.Settings;
+
+public class MockSettingsRepository implements SettingsRepository {
+
+    @Override
+    public Settings getSettings() {
+        // Тестовые данные настроек
+        return new Settings("English", "Light", "Moscow");
+    }
+
+    @Override
+    public void saveSettings(Settings settings) {
+        // Фиктивная логика сохранения
+        System.out.println("Settings saved: Language = " + settings.getLanguage() + ", Theme = " + settings.getTheme());
+    }
+}
+
+
+weathercast\data\repository\mock\MockUserRepository.java
+package ru.mirea.kuzenkov.weathercast.data.repository.mock;
+
+import java.util.Arrays;
+import java.util.List;
+
+import ru.mirea.kuzenkov.weathercast.domain.repositories.UserRepository;
+import ru.mirea.kuzenkov.weathercast.domain.model.User;
+
+public class MockUserRepository implements UserRepository {
+
+    @Override
+    public User authenticate(String username, String password) {
+        // Пример простой аутентификации
+        if ("testuser".equals(username) && "password".equals(password)) {
+            return new User(username, "Test User");
+        }
+        return null;
+    }
+
+    @Override
+    public List<String> getFavoriteCities(String userId) {
+        // Возвращаем тестовый список избранных городов
+        return Arrays.asList("Moscow", "London", "New York");
+    }
+}
+
+
+weathercast\data\repository\mock\MockWeatherRepository.java
+package ru.mirea.kuzenkov.weathercast.data.repository.mock;
+
+import ru.mirea.kuzenkov.weathercast.domain.repositories.WeatherRepository;
+import ru.mirea.kuzenkov.weathercast.domain.model.WeatherForecast;
+
+public class MockWeatherRepository implements WeatherRepository {
+
+    @Override
+    public WeatherForecast getWeather(String cityName) {
+        // Пример тестовых данных
+        switch (cityName.toLowerCase()) {
+            case "moscow":
+                return new WeatherForecast(cityName, "Cloudy", 12);
+            case "new york":
+                return new WeatherForecast(cityName, "Sunny", 25);
+            default:
+                return new WeatherForecast(cityName, "Unknown", 0);
+        }
+    }
+}
+
+
+weathercast\domain\model\Settings.java
+package ru.mirea.kuzenkov.weathercast.domain.model;
+
+public class Settings {
+    private String language;
+    private String theme;
+    private String defaultCity;
+
+    public Settings(String language, String theme, String defaultCity) {
+        this.language = language;
+        this.theme = theme;
+        this.defaultCity = defaultCity;
+    }
+
+    // Геттеры
+    public String getLanguage() {
+        return language;
+    }
+
+    public String getTheme() {
+        return theme;
+    }
+
+    public String getDefaultCity() {
+        return defaultCity;
+    }
+}
+
+
+weathercast\domain\model\User.java
+package ru.mirea.kuzenkov.weathercast.domain.model;
+
+public class User {
+    private String username;
+    private String displayName;
+
+    public User(String username, String displayName) {
+        this.username = username;
+        this.displayName = displayName;
+    }
+
+    // Геттеры
+    public String getUsername() {
+        return username;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+}
+
+
+weathercast\domain\model\WeatherForecast.java
+package ru.mirea.kuzenkov.weathercast.domain.model;
+
+public class WeatherForecast {
+    private String cityName;
+    private String condition;
+    private int temperature;
+
+    public WeatherForecast(String cityName, String condition, int temperature) {
+        this.cityName = cityName;
+        this.condition = condition;
+        this.temperature = temperature;
+    }
+
+    // Геттеры
+    public String getCityName() {
+        return cityName;
+    }
+
+    public String getCondition() {
+        return condition;
+    }
+
+    public int getTemperature() {
+        return temperature;
+    }
+}
+
+
+weathercast\domain\usecases\AuthenticateUserUseCase.java
+package ru.mirea.kuzenkov.weathercast.domain.usecases;
+
+import ru.mirea.kuzenkov.weathercast.domain.repositories.UserRepository;
+import ru.mirea.kuzenkov.weathercast.domain.model.User;
+
+public class AuthenticateUserUseCase {
+
+    private final UserRepository userRepository;
+
+    public AuthenticateUserUseCase(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    public User execute(String username, String password) {
+        return userRepository.authenticate(username, password);
+    }
+}
+
+
+weathercast\domain\usecases\GetWeatherForecastUseCase.java
+package ru.mirea.kuzenkov.weathercast.domain.usecases;
+
+import ru.mirea.kuzenkov.weathercast.domain.repositories.WeatherRepository;
+import ru.mirea.kuzenkov.weathercast.domain.model.WeatherForecast;
+
+public class GetWeatherForecastUseCase {
+
+    private final WeatherRepository weatherRepository;
+
+    public GetWeatherForecastUseCase(WeatherRepository weatherRepository) {
+        this.weatherRepository = weatherRepository;
+    }
+
+    public WeatherForecast execute(String cityName) {
+        return weatherRepository.getWeather(cityName);
+    }
+}
+
+
+weathercast\domain\usecases\LoadFavoriteCitiesUseCase.java
+package ru.mirea.kuzenkov.weathercast.domain.usecases;
+
+import java.util.List;
+import ru.mirea.kuzenkov.weathercast.domain.repositories.UserRepository;
+
+public class LoadFavoriteCitiesUseCase {
+
+    private final UserRepository userRepository;
+
+    public LoadFavoriteCitiesUseCase(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    public List<String> execute(String userId) {
+        return userRepository.getFavoriteCities(userId);
+    }
+}
+
+
+weathercast\domain\usecases\RecognizeWeatherByImageUseCase.java
+package ru.mirea.kuzenkov.weathercast.domain.usecases;
+
+public class RecognizeWeatherByImageUseCase {
+
+    public String execute(byte[] imageBytes) {
+        // Здесь должна быть логика для TensorFlow Lite, но пока возвращаем тестовые данные
+        return "Sunny";
+    }
+}
+
+
+weathercast\domain\usecases\SaveFavoriteCityUseCase.java
+package ru.mirea.kuzenkov.weathercast.domain.usecases;
+
+import java.util.List;
+import ru.mirea.kuzenkov.weathercast.domain.repositories.UserRepository;
+
+public class SaveFavoriteCityUseCase {
+
+    private final UserRepository userRepository;
+
+    public SaveFavoriteCityUseCase(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    public void execute(String userId, List<String> favoriteCities) {
+        // Здесь можно реализовать сохранение городов
+        System.out.println("Saved favorite cities: " + favoriteCities);
+    }
+}
+
+
+weathercast\domain\utils\JsonParser.java
+package ru.mirea.kuzenkov.weathercast.domain.utils;
+
+public class JsonParser {
+}
+
+
+weathercast\domain\utils\NetworkUtils.java
+package ru.mirea.kuzenkov.weathercast.domain.utils;
+
+public class NetworkUtils {
+}
+
+
+weathercast\presentation\AuthenticationActivity.java
+package ru.mirea.kuzenkov.weathercast.presentation;
+
+import android.os.Bundle;
+import androidx.appcompat.app.AppCompatActivity;
+
+import ru.mirea.kuzenkov.weathercast.R;
+
+public class AuthenticationActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_authentication);
+    }
+}
+
+weathercast\presentation\CityDetailActivity.java
+package ru.mirea.kuzenkov.weathercast.presentation;
+
+import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
+import androidx.appcompat.app.AppCompatActivity;
+import ru.mirea.kuzenkov.weathercast.R;
+
+public class CityDetailActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_city_detail); // Убедитесь, что макет существует
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.city_options_menu, menu); // Проверьте, что путь к меню верный
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_add_to_favorites:
+                // Логика добавления в избранное
+                return true;
+            case R.id.action_remove_from_favorites:
+                // Логика удаления из избранного
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+}
+
+
+weathercast\presentation\FavoriteCitiesFragment.java
+package ru.mirea.kuzenkov.weathercast.presentation;
+
+public class FavoriteCitiesFragment {
+}
+
+
+weathercast\presentation\HomeActivity.java
+package ru.mirea.kuzenkov.weathercast.presentation;
+
+import android.os.Bundle;
+import androidx.appcompat.app.AppCompatActivity;
+import ru.mirea.kuzenkov.weathercast.R;
+
+public class HomeActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_home);
+    }
+}
+
+weathercast\presentation\SettingsActivity.java
+package ru.mirea.kuzenkov.weathercast.presentation;
+
+public class SettingsActivity {
+}
+
+

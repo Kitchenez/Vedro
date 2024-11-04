@@ -1,0 +1,771 @@
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\app\src\main\java\ru\mirea\kuzenkov\PlantBook\LoginActivity.java
+package ru.mirea.kuzenkov.PlantBook;
+
+public class LoginActivity {
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\app\src\main\java\ru\mirea\kuzenkov\PlantBook\MainActivity.java
+package ru.mirea.kuzenkov.PlantBook;
+
+import android.os.Bundle;
+
+import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
+import java.util.Date;
+
+import ru.mirea.kuzenkov.data.repository.firebase.FirebaseAccountRepository;
+import ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.local.LocalBookmarkRepository;
+import ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.local.LocalPlantRepository;
+import ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.remote.GuestBookmarkRepository;
+import ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.remote.RemotePlantRepository;
+import ru.mirea.kuzenkov.domain.repository.IAccountRepository;
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class MainActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
+        setContentView(R.layout.activity_main);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+
+
+        IBookmarkRepository bookmarkRepository = new LocalBookmarkRepository(new GuestBookmarkRepository(), new Date());
+        IPlantRepository plantRepository = new LocalPlantRepository(new RemotePlantRepository(), new Date());
+        IAccountRepository accountRepository = new FirebaseAccountRepository();
+    }
+}
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\firebase\FirebaseAccountRepository.java
+package ru.mirea.kuzenkov.data.repository.firebase;
+
+import kotlin.NotImplementedError;
+import ru.mirea.kuzenkov.domain.repository.IAccountRepository;
+
+public class FirebaseAccountRepository implements IAccountRepository {
+    @Override
+    public void Authorize(String username, String password) {
+        throw new NotImplementedError();
+    }
+    @Override
+    public void Register(String username, String password) {
+        throw new NotImplementedError();
+    }
+    @Override
+    public void ContinueAsGuest() {
+        throw new NotImplementedError();
+    }
+    @Override
+    public void LogOut() {
+        throw new NotImplementedError();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\kuzenkov_plant_api\local\AppDatabase.java
+package ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.local;
+
+import androidx.room.Database;
+import androidx.room.RoomDatabase;
+
+public class AppDatabase {
+    @Database(entities = {UserEntity.class}, version = 1)
+    public abstract class AppDatabase extends RoomDatabase {
+        public abstract UserDao userDao();
+    }
+
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\kuzenkov_plant_api\local\LocalBookmarkRepository.java
+package ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.local;
+
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
+
+import kotlin.NotImplementedError;
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+
+public class LocalBookmarkRepository implements IBookmarkRepository {
+    private Set<Integer> Bookmarks = new HashSet<>();
+    private final IBookmarkRepository Origin;
+    private Date LastSyncTime;
+
+    public LocalBookmarkRepository(IBookmarkRepository origin, Date lastSyncTime) {
+        LastSyncTime = lastSyncTime;
+        Origin = origin;
+
+        SyncWithOrigin();
+    }
+    private void SyncWithOrigin() {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(LastSyncTime);
+        cal.add(Calendar.HOUR_OF_DAY, 24);
+        cal.getTime();
+        if(cal.getTime().after(new Date())) {
+            return;
+        }
+
+        Set<Integer> OriginBookmarks = Origin.ListBookmarks();
+        if(OriginBookmarks.equals(Bookmarks)) {
+            return;
+        }
+
+        Set<Integer> BookmarkUnion = new HashSet<>();
+        BookmarkUnion.addAll(OriginBookmarks);
+        BookmarkUnion.addAll(Bookmarks);
+
+        Set<Integer> LocalOnlyBookmark = new HashSet<>(Bookmarks);
+        LocalOnlyBookmark.removeAll(OriginBookmarks);
+
+        Bookmarks = BookmarkUnion;
+        for(Integer plantId: LocalOnlyBookmark) {
+            Origin.AddBookmark(plantId);
+        }
+    }
+
+    @Override
+    public Set<Integer> ListBookmarks() {
+        return Bookmarks;
+    }
+    @Override
+    public void AddBookmark(Integer plantId) {
+        Origin.AddBookmark(plantId);
+        Bookmarks.add(plantId);
+    }
+    @Override
+    public void RemoveBookmark(Integer plantId) {
+        Origin.RemoveBookmark(plantId);
+        Bookmarks.remove(plantId);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\kuzenkov_plant_api\local\LocalPlantRepository.java
+package ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.local;
+
+import java.time.DateTimeException;
+import java.time.LocalDateTime;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import kotlin.NotImplementedError;
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class LocalPlantRepository implements IPlantRepository {
+    private final Map<Integer, PlantInfo> Plants = new HashMap<>();
+    private final IPlantRepository Origin;
+    private Date LastSyncTime;
+
+    public LocalPlantRepository(IPlantRepository origin, Date lastSyncTime) {
+        LastSyncTime = lastSyncTime;
+        Origin = origin;
+
+        SyncWithOrigin();
+    }
+    private void SyncWithOrigin() {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(LastSyncTime);
+        cal.add(Calendar.HOUR_OF_DAY, 24);
+        cal.getTime();
+        if(cal.getTime().after(new Date())) {
+            return;
+        }
+
+        for(Integer plantId: Origin.GetPlantList()) {
+            Plants.put(plantId, Origin.GetPlantInfo(plantId));
+        }
+        Plants.clear();
+        LastSyncTime = new Date();
+    }
+
+    @Override
+    public PlantInfo GetPlantInfo(Integer plantId) {
+        throw new NotImplementedError();
+    }
+    @Override
+    public List<Integer> GetPlantList() {
+        throw new NotImplementedError();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\kuzenkov_plant_api\local\PreferencesRepository.java
+package ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.local;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+
+public class PreferencesRepository {
+
+    private static final String PREFS_NAME = "user_prefs";
+    private static final String KEY_USER_EMAIL = "user_email";
+
+    private final SharedPreferences sharedPreferences;
+
+    public PreferencesRepository(Context context) {
+        sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    }
+
+    public void saveUserEmail(String email) {
+        sharedPreferences.edit().putString(KEY_USER_EMAIL, email).apply();
+    }
+
+    public String getUserEmail() {
+        return sharedPreferences.getString(KEY_USER_EMAIL, null);
+    }
+}
+
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\kuzenkov_plant_api\local\UserDao.java
+package ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.local;
+
+import androidx.room.Dao;
+import androidx.room.Insert;
+import androidx.room.Query;
+
+public class UserDao {
+    @Dao
+    public interface UserDao {
+        @Insert
+        void insertUser(UserEntity user);
+
+        @Query("SELECT * FROM user WHERE email = :email LIMIT 1")
+        UserEntity getUser(String email);
+    }
+
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\kuzenkov_plant_api\local\UserEntity.java
+package ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.local;
+
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
+
+public class UserEntity {
+    @Entity(tableName = "user")
+    public class UserEntity {
+        @PrimaryKey
+        public String email;
+        public String name;
+    }
+
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\kuzenkov_plant_api\remote\GuestBookmarkRepository.java
+package ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.remote;
+
+import java.util.Collections;
+import java.util.Set;
+
+import kotlin.NotImplementedError;
+import ru.mirea.kuzenkov.data.repository.mock.MockBookmarkRepository;
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+
+public class GuestBookmarkRepository implements IBookmarkRepository {
+    @Override
+    public Set<Integer> ListBookmarks() {
+        throw new NotImplementedError();
+    }
+
+    @Override
+    public void AddBookmark(Integer plantId) {
+        throw new NotImplementedError();
+    }
+
+    @Override
+    public void RemoveBookmark(Integer plantId) {
+        throw new NotImplementedError();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\kuzenkov_plant_api\remote\RemoteBookmarkRepository.java
+package ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.remote;
+
+import java.util.Collections;
+import java.util.Set;
+
+import kotlin.NotImplementedError;
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+
+public class RemoteBookmarkRepository implements IBookmarkRepository {
+    @Override
+    public Set<Integer> ListBookmarks() {
+        throw new NotImplementedError();
+    }
+    @Override
+    public void AddBookmark(Integer plantId) {
+        throw new NotImplementedError();
+    }
+    @Override
+    public void RemoveBookmark(Integer plantId) {
+        throw new NotImplementedError();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\kuzenkov_plant_api\remote\RemotePlantRepository.java
+package ru.mirea.kuzenkov.data.repository.kuzenkov_plant_api.remote;
+
+import java.util.Collections;
+import java.util.List;
+
+import kotlin.NotImplementedError;
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class RemotePlantRepository implements IPlantRepository {
+    @Override
+    public PlantInfo GetPlantInfo(Integer plantId) {
+        throw new NotImplementedError();
+    }
+    @Override
+    public List<Integer> GetPlantList() {
+        throw new NotImplementedError();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\mock\MockAccountRepository.java
+package ru.mirea.kuzenkov.data.repository.mock;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IAccountRepository;
+
+public class MockAccountRepository implements IAccountRepository {
+    private boolean HasAccount = false;
+
+    @Override
+    public void Authorize(String username, String password) {
+        if(HasAccount) {
+            throw new RuntimeException("Account already exists");
+        }
+        HasAccount = true;
+    }
+    @Override
+    public void Register(String username, String password) {
+        if(HasAccount) {
+            throw new RuntimeException("Account already exists");
+        }
+        HasAccount = true;
+    }
+    @Override
+    public void ContinueAsGuest() {
+        if(HasAccount) {
+            throw new RuntimeException("Account already exists");
+        }
+        HasAccount = true;
+    }
+    @Override
+    public void LogOut() {
+        if(!HasAccount) {
+            throw new RuntimeException("Account not exists");
+        }
+        HasAccount = false;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\mock\MockBookmarkRepository.java
+package ru.mirea.kuzenkov.data.repository.mock;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+
+public class MockBookmarkRepository implements IBookmarkRepository {
+    private final Set<Integer> Bookmarks = new HashSet<>();
+
+    @Override
+    public Set<Integer> ListBookmarks() {
+        return Bookmarks;
+    }
+    @Override
+    public void AddBookmark(Integer plantId) {
+        Bookmarks.add(plantId);
+    }
+    @Override
+    public void RemoveBookmark(Integer plantId) {
+        Bookmarks.remove(plantId);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\mock\MockPlantRecognizer.java
+package ru.mirea.kuzenkov.data.repository.mock;
+
+import ru.mirea.kuzenkov.domain.repository.IPlantRecognizer;
+
+public class MockPlantRecognizer implements IPlantRecognizer {
+    @Override
+    public Integer RecognizePlant(byte[] photo) {
+        return -1;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\mock\MockPlantRepository.java
+package ru.mirea.kuzenkov.data.repository.mock;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class MockPlantRepository implements IPlantRepository {
+    private final Map<Integer, PlantInfo> Plants = new HashMap<>();
+    public MockPlantRepository() {
+        Plants.put(1, new PlantInfo("t-1", "d-1"));
+        Plants.put(2, new PlantInfo("t-2", "d-2"));
+        Plants.put(3, new PlantInfo("t-3", "d-3"));
+        Plants.put(4, new PlantInfo("t-4", "d-4"));
+    }
+
+    @Override
+    public PlantInfo GetPlantInfo(Integer plantId) {
+        return Plants.get(plantId);
+    }
+    @Override
+    public List<Integer> GetPlantList() {
+        return new ArrayList<>(Plants.keySet());
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\network\NetworkApi.java
+package ru.mirea.kuzenkov.data.repository.network;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+
+public class NetworkApi {
+
+    public List<PlantInfo> fetchMockedPlantData() {
+        List<PlantInfo> plants = new ArrayList<>();
+        plants.add(new PlantInfo("Rose", "A beautiful flower"));
+        plants.add(new PlantInfo("Sunflower", "A tall yellow flower"));
+        return plants;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\data\src\main\java\ru\mirea\kuzenkov\data\repository\tensorflow\TensorflowPlantRecognizer.java
+package ru.mirea.kuzenkov.data.repository.tensorflow;
+
+import kotlin.NotImplementedError;
+import ru.mirea.kuzenkov.domain.repository.IPlantRecognizer;
+
+public class TensorflowPlantRecognizer implements IPlantRecognizer {
+    @Override
+    public Integer RecognizePlant(byte[] photo) {
+        throw new NotImplementedError();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\dto\PlantInfo.java
+package ru.mirea.kuzenkov.domain.dto;
+
+public class PlantInfo {
+    private final String Title;
+    private final String Description;
+
+    public PlantInfo(String title, String description) {
+        Title = title;
+        Description = description;
+    }
+
+    public String getTitle() {
+        return Title;
+    }
+    public String getDescription() {
+        return Description;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\repository\IAccountRepository.java
+package ru.mirea.kuzenkov.domain.repository;
+
+public interface IAccountRepository {
+    void Authorize(String username, String password);
+    void Register(String username, String password);
+    void ContinueAsGuest();
+    void LogOut();
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\repository\IBookmarkRepository.java
+package ru.mirea.kuzenkov.domain.repository;
+
+import java.util.Set;
+
+public interface IBookmarkRepository {
+    Set<Integer> ListBookmarks();
+    void AddBookmark(Integer plantId);
+    void RemoveBookmark(Integer plantId);
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\repository\IPlantRecognizer.java
+package ru.mirea.kuzenkov.domain.repository;
+
+public interface IPlantRecognizer {
+    Integer RecognizePlant(byte[] photo);
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\repository\IPlantRepository.java
+package ru.mirea.kuzenkov.domain.repository;
+
+import java.util.List;
+
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+
+public interface IPlantRepository {
+    PlantInfo GetPlantInfo(Integer plantId);
+    List<Integer> GetPlantList();
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\account\Authorize.java
+package ru.mirea.kuzenkov.domain.usecase.account;
+
+import ru.mirea.kuzenkov.domain.repository.IAccountRepository;
+
+public class Authorize {
+    private final IAccountRepository accountRepository;
+    public Authorize(IAccountRepository accountRepository) {
+        this.accountRepository = accountRepository;
+    }
+
+    public void execute(String username, String password) {
+        accountRepository.Authorize(username, password);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\account\ContinueAsGuest.java
+package ru.mirea.kuzenkov.domain.usecase.account;
+
+import ru.mirea.kuzenkov.domain.repository.IAccountRepository;
+
+public class ContinueAsGuest {
+    private final IAccountRepository accountRepository;
+    public ContinueAsGuest(IAccountRepository accountRepository) {
+        this.accountRepository = accountRepository;
+    }
+
+    public void execute() {
+        accountRepository.ContinueAsGuest();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\account\LogOut.java
+package ru.mirea.kuzenkov.domain.usecase.account;
+
+import ru.mirea.kuzenkov.domain.repository.IAccountRepository;
+
+public class LogOut {
+    private final IAccountRepository accountRepository;
+    public LogOut(IAccountRepository accountRepository) {
+        this.accountRepository = accountRepository;
+    }
+
+    public void execute() {
+        accountRepository.LogOut();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\account\Register.java
+package ru.mirea.kuzenkov.domain.usecase.account;
+
+import ru.mirea.kuzenkov.domain.repository.IAccountRepository;
+
+public class Register {
+    private final IAccountRepository accountRepository;
+    public Register(IAccountRepository accountRepository) {
+        this.accountRepository = accountRepository;
+    }
+
+    public void execute(String username, String password) {
+        accountRepository.Register(username, password);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\bookmark\AddBookmark.java
+package ru.mirea.kuzenkov.domain.usecase.bookmark;
+
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+
+public class AddBookmark {
+    private final IBookmarkRepository bookmarkRepository;
+    public AddBookmark(IBookmarkRepository bookmarkRepository) {
+        this.bookmarkRepository = bookmarkRepository;
+    }
+
+    public void execute(Integer plantId) {
+        bookmarkRepository.AddBookmark(plantId);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\bookmark\CheckIsBookmark.java
+package ru.mirea.kuzenkov.domain.usecase.bookmark;
+
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+
+public class CheckIsBookmark {
+    private final IBookmarkRepository bookmarkRepository;
+    public CheckIsBookmark(IBookmarkRepository bookmarkRepository) {
+        this.bookmarkRepository = bookmarkRepository;
+    }
+
+    public Boolean execute(Integer plantId) {
+        return bookmarkRepository.ListBookmarks().contains(plantId);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\bookmark\ListBookmarks.java
+package ru.mirea.kuzenkov.domain.usecase.bookmark;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class ListBookmarks {
+    private final IBookmarkRepository bookmarkRepository;
+    private final IPlantRepository plantRepository;
+
+    public ListBookmarks(IBookmarkRepository bookmarkRepository, IPlantRepository plantRepository) {
+        this.bookmarkRepository = bookmarkRepository;
+        this.plantRepository = plantRepository;
+    }
+
+    public List<PlantInfo> execute() {
+        List<PlantInfo> result = new ArrayList<PlantInfo>();
+        Set<Integer> bookmarks = bookmarkRepository.ListBookmarks();
+        for(Integer plantId: plantRepository.GetPlantList()) {
+            if(bookmarks.contains(plantId)) {
+                result.add(plantRepository.GetPlantInfo(plantId));
+            }
+        }
+        return result;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\bookmark\RemoveBookmark.java
+package ru.mirea.kuzenkov.domain.usecase.bookmark;
+
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+
+public class RemoveBookmark {
+    private final IBookmarkRepository bookmarkRepository;
+    public RemoveBookmark(IBookmarkRepository bookmarkRepository) {
+        this.bookmarkRepository = bookmarkRepository;
+    }
+
+    public void execute(Integer plantId) {
+        bookmarkRepository.RemoveBookmark(plantId);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\plant\GetPlantInfo.java
+package ru.mirea.kuzenkov.domain.usecase.plant;
+
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class GetPlantInfo {
+    private final IPlantRepository plantRepository;
+    public GetPlantInfo(IPlantRepository plantRepository) {
+        this.plantRepository = plantRepository;
+    }
+    public PlantInfo execute(int plantId) {
+        return plantRepository.GetPlantInfo(plantId);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\plant\GetPlantList.java
+package ru.mirea.kuzenkov.domain.usecase.plant;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class GetPlantList {
+    private final IPlantRepository plantRepository;
+    public GetPlantList(IPlantRepository plantRepository) {
+        this.plantRepository = plantRepository;
+    }
+    public List<PlantInfo> execute() {
+        List<PlantInfo> result = new ArrayList<PlantInfo>();
+        for(Integer plantId: plantRepository.GetPlantList()) {
+            result.add(plantRepository.GetPlantInfo(plantId));
+        }
+        return result;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz2\kuzenkov2\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\plant\RecognizePlant.java
+package ru.mirea.kuzenkov.domain.usecase.plant;
+
+import ru.mirea.kuzenkov.domain.repository.IPlantRecognizer;
+
+public class RecognizePlant {
+    private final IPlantRecognizer plantRecognizer;
+    public RecognizePlant(IPlantRecognizer plantRecognizer) {
+        this.plantRecognizer = plantRecognizer;
+    }
+    Integer execute(byte[] photo) {
+        return plantRecognizer.RecognizePlant(photo);
+    }
+}
+
+
