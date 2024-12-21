@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "30721515173",
+    "project_id": "plantbook-634f9",
+    "storage_bucket": "plantbook-634f9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:30721515173:android:66db9c11f56919a5d7374c",
+        "android_client_info": {
+          "package_name": "ru.mirea.kuzenkov.PlantBook"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTOg4MvhicX9aM6eNNaPELllFtkhoc8Ho"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

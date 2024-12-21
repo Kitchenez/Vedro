@@ -1,0 +1,1301 @@
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\app\src\main\java\ru\mirea\kuzenkov\PlantBook\MainActivity.java
+package ru.mirea.kuzenkov.PlantBook;
+
+import android.content.Intent;
+import android.os.Bundle;
+
+import com.google.firebase.auth.FirebaseAuth;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+
+import ru.mirea.kuzenkov.PlantBook.PlantInfoList.PlantInfoListViewAdapter;
+import ru.mirea.kuzenkov.PlantBook.PlantInfoList.PlantInfoListViewModel;
+import ru.mirea.kuzenkov.PlantBook.PlantInfoList.PlantInfoListViewModelFactory;
+import ru.mirea.kuzenkov.PlantBook.databinding.ActivityMainBinding;
+import ru.mirea.kuzenkov.PlantBook.login.LoginActivity;
+import ru.mirea.kuzenkov.data.repository.firebase.FirebaseAuthorizationService;
+import ru.mirea.kuzenkov.data.repository.network.TreflePlantRepository;
+import ru.mirea.kuzenkov.data.repository.room.RoomBookmarkRepository;
+import ru.mirea.kuzenkov.data.repository.room.RoomPlantRepository;
+import ru.mirea.kuzenkov.domain.repository.IAuthorizationService;
+
+public class MainActivity extends AppCompatActivity {
+    private static final String TREFLE_API_KEY = "rX0vAfgiy2rg8x7rNzciShfIpZZWc5E5vPBHwh22VKw";
+    private PlantInfoListViewModel vm = null;
+    private IAuthorizationService auth = null;
+    private ActivityMainBinding binding = null;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        binding = ActivityMainBinding.inflate(getLayoutInflater());
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        binding.logOutButton.setOnClickListener(v -> OnLogOutButtonClicked());
+        setContentView(binding.getRoot());
+
+        auth = new FirebaseAuthorizationService(FirebaseAuth.getInstance());
+        var database = PlantBookApplication.getInstance().getDatabase();
+
+        var plantRepository = new RoomPlantRepository(new TreflePlantRepository(TREFLE_API_KEY), database.roomPlantInfoDao());
+        var bookmarkRepository = new RoomBookmarkRepository(database.roomBookmarkDao());
+
+        vm = new ViewModelProvider(this, new PlantInfoListViewModelFactory(bookmarkRepository, plantRepository)).get(PlantInfoListViewModel.class);
+        vm.getPlantInfoList().observe(this, PlantInfos -> {
+            binding.recyclerView.setAdapter(new PlantInfoListViewAdapter(MainActivity.this, PlantInfos));
+        });
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        CheckIsUserAuthorized();
+    }
+
+    private void CheckIsUserAuthorized() {
+        if(auth.GetUserStatus() == IAuthorizationService.UserStatus.None) {
+            startActivity(new Intent(this, LoginActivity.class));
+        }
+    }
+
+    private void OnLogOutButtonClicked() {
+        auth.LogOut();
+        CheckIsUserAuthorized();
+    }
+}
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\app\src\main\java\ru\mirea\kuzenkov\PlantBook\PlantBookApplication.java
+package ru.mirea.kuzenkov.PlantBook;
+
+import androidx.room.Room;
+
+import ru.mirea.kuzenkov.data.repository.room.ApplicationDatabase;
+
+public class PlantBookApplication extends android.app.Application {
+    private static PlantBookApplication instance = null;
+    private ApplicationDatabase applicationDatabase;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        instance = this;
+        applicationDatabase = Room.databaseBuilder(this, ApplicationDatabase.class, "database")
+                .allowMainThreadQueries()
+                .build();
+    }
+    public static PlantBookApplication getInstance() {
+        return instance;
+    }
+    public ApplicationDatabase getDatabase() {
+        return applicationDatabase;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\app\src\main\java\ru\mirea\kuzenkov\PlantBook\login\LoginActivity.java
+package ru.mirea.kuzenkov.PlantBook.login;
+
+import android.content.Intent;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.util.Log;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.firebase.auth.FirebaseAuth;
+
+import ru.mirea.kuzenkov.PlantBook.MainActivity;
+import ru.mirea.kuzenkov.PlantBook.databinding.ActivityLoginBinding;
+import ru.mirea.kuzenkov.data.repository.firebase.FirebaseAuthorizationService;
+import ru.mirea.kuzenkov.domain.repository.IAuthorizationService;
+
+public class LoginActivity extends AppCompatActivity {
+    private abstract class LogInTask extends AsyncTask<Void, Void, Void> {
+        @Override
+        protected void onPostExecute(Void result) {
+            CheckIsUserNonAuthorized();
+        }
+    }
+    private class AuthorizeUserTask extends LogInTask {
+        private final String username;
+        private final String password;
+        private AuthorizeUserTask(String username, String password) {
+            this.username = username;
+            this.password = password;
+        }
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            auth.AuthorizeUser(username, password);
+            return null;
+        }
+    }
+    private class RegisterUserTask extends LogInTask {
+        private final String username;
+        private final String password;
+        private RegisterUserTask(String username, String password) {
+            this.username = username;
+            this.password = password;
+        }
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            auth.RegisterUser(username, password);
+            return null;
+        }
+    }
+    private class ContinueAsGuestTask extends LogInTask {
+        @Override
+        protected Void doInBackground(Void... voids) {
+            auth.ContinueAsGuest();
+            return null;
+        }
+    }
+    private ActivityLoginBinding binding = null;
+    private IAuthorizationService auth = null;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        auth = new FirebaseAuthorizationService(FirebaseAuth.getInstance());
+        binding = ActivityLoginBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+
+        binding.continueAsGuestButton.setOnClickListener(v -> OnContinueAsGuestButtonClicked());
+        binding.authorizeButton.setOnClickListener(v -> OnAuthorizeButtonClicked());
+        binding.registerButton.setOnClickListener(v -> OnRegisterButtonClicked());
+    }
+    @Override
+    protected void onStart() {
+        super.onStart();
+        CheckIsUserNonAuthorized();
+    }
+
+    private void OnContinueAsGuestButtonClicked() {
+        try {
+
+            new ContinueAsGuestTask().execute();
+        } catch (Exception error) {
+            Toast.makeText(this, error.toString(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    private void OnAuthorizeButtonClicked() {
+        try {
+            new AuthorizeUserTask(binding.username.getText().toString(), binding.password.getText().toString()).execute();
+        } catch (Exception error) {
+            Toast.makeText(this, error.toString(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    private void OnRegisterButtonClicked() {
+        try {
+            new RegisterUserTask(binding.username.getText().toString(), binding.password.getText().toString()).execute();
+        } catch (Exception error) {
+            Toast.makeText(this, error.toString(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    private void CheckIsUserNonAuthorized() {
+        if(auth.GetUserStatus() != IAuthorizationService.UserStatus.None) {
+            startActivity(new Intent(this, MainActivity.class));
+        }
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\app\src\main\java\ru\mirea\kuzenkov\PlantBook\PlantInfoList\PlantInfoListViewAdapter.java
+package ru.mirea.kuzenkov.PlantBook.PlantInfoList;
+
+import android.content.Context;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.squareup.picasso.MemoryPolicy;
+import com.squareup.picasso.NetworkPolicy;
+import com.squareup.picasso.Picasso;
+
+import java.util.List;
+
+import ru.mirea.kuzenkov.PlantBook.R;
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+
+public class PlantInfoListViewAdapter extends RecyclerView.Adapter<PlantInfoListViewHolder> {
+    private final List<PlantInfo> plantInfos;
+    private final LayoutInflater layoutInflater;
+    public PlantInfoListViewAdapter(Context context, List<PlantInfo> plantInfos) {
+        layoutInflater = LayoutInflater.from(context);
+        this.plantInfos = plantInfos;
+    }
+
+
+    @NonNull
+    @Override
+    public PlantInfoListViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = layoutInflater.inflate(R.layout.plant_list_item, parent, false);
+        return new PlantInfoListViewHolder(view);
+    }
+    @Override
+    public void onBindViewHolder(@NonNull PlantInfoListViewHolder holder, int position) {
+        var info = plantInfos.get(position);
+
+        Picasso.get()
+            .load(info.getImageUri())
+            .placeholder(R.drawable.ic_launcher_background)
+            .error(R.drawable.ic_launcher_foreground)
+            .fit().into(holder.iconView);
+        holder.titleTextView.setText(info.getTitle());
+    }
+    @Override
+    public int getItemCount() {
+        return plantInfos.size();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\app\src\main\java\ru\mirea\kuzenkov\PlantBook\PlantInfoList\PlantInfoListViewHolder.java
+package ru.mirea.kuzenkov.PlantBook.PlantInfoList;
+
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+
+import ru.mirea.kuzenkov.PlantBook.R;
+
+public class PlantInfoListViewHolder extends RecyclerView.ViewHolder {
+    ImageView iconView;
+    TextView titleTextView;
+    public PlantInfoListViewHolder(@NonNull View itemView) {
+        super(itemView);
+        iconView = itemView.findViewById(R.id.icon_view);
+        titleTextView = itemView.findViewById(R.id.title_text);
+    }
+}
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\app\src\main\java\ru\mirea\kuzenkov\PlantBook\PlantInfoList\PlantInfoListViewModel.java
+package ru.mirea.kuzenkov.PlantBook.PlantInfoList;
+
+import android.os.AsyncTask;
+import android.os.Debug;
+import android.util.Log;
+
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.ViewModel;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import ru.mirea.kuzenkov.domain.dto.Bookmark;
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+import ru.mirea.kuzenkov.domain.usecase.bookmark.ListBookmarks;
+import ru.mirea.kuzenkov.domain.usecase.plant.GetPlantList;
+
+public class PlantInfoListViewModel extends ViewModel {
+    private final MutableLiveData<List<PlantInfo>> plantInfoList = new MutableLiveData<>();
+    private final IBookmarkRepository bookmarkRepository;
+    private final IPlantRepository plantRepository;
+
+
+    private class GetFullPlantInfoTask extends AsyncTask<Void, Void, List<PlantInfo>> {
+        @Override
+        protected List<PlantInfo> doInBackground(Void... voids) {
+            var allPlants = new ArrayList<>(new GetPlantList(plantRepository).execute());
+            var bookmarks = new ArrayList<>(new ListBookmarks(bookmarkRepository, plantRepository).execute());
+
+            allPlants.removeAll(bookmarks);
+            bookmarks.addAll(allPlants);
+            return bookmarks;
+        }
+        @Override
+        protected void onPostExecute(List<PlantInfo> result) {
+            plantInfoList.postValue(result);
+        }
+    }
+
+
+    public PlantInfoListViewModel(IPlantRepository plantRepository, IBookmarkRepository bookmarkRepository) {
+        this.bookmarkRepository = bookmarkRepository;
+        this.plantRepository = plantRepository;
+
+        new GetFullPlantInfoTask().execute();
+
+    }
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+    }
+
+    public LiveData<List<PlantInfo>> getPlantInfoList() {
+        return plantInfoList;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\app\src\main\java\ru\mirea\kuzenkov\PlantBook\PlantInfoList\PlantInfoListViewModelFactory.java
+package ru.mirea.kuzenkov.PlantBook.PlantInfoList;
+
+import androidx.annotation.NonNull;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
+
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class PlantInfoListViewModelFactory implements ViewModelProvider.Factory {
+    private final IBookmarkRepository bookmarkRepository;
+    private final IPlantRepository plantRepository;
+
+    public PlantInfoListViewModelFactory(IBookmarkRepository bookmarkRepository, IPlantRepository plantRepository) {
+        this.bookmarkRepository = bookmarkRepository;
+        this.plantRepository = plantRepository;
+    }
+
+    @NonNull
+    @Override
+    public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
+        return (T) new PlantInfoListViewModel(plantRepository, bookmarkRepository);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\firebase\FirebaseAuthorizationService.java
+package ru.mirea.kuzenkov.data.repository.firebase;
+
+import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.auth.FirebaseAuth;
+
+import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+
+import ru.mirea.kuzenkov.domain.repository.IAuthorizationService;
+
+public class FirebaseAuthorizationService implements IAuthorizationService {
+    private final FirebaseAuth auth;
+    public FirebaseAuthorizationService(FirebaseAuth auth) {
+        this.auth = auth;
+    }
+
+    @Override
+    public UserStatus GetUserStatus() {
+        var user = auth.getCurrentUser();
+        if(user == null) {
+            return UserStatus.None;
+        } else if(user.isAnonymous()) {
+            return UserStatus.Guest;
+        } else {
+            return UserStatus.Client;
+        }
+    }
+    @Override
+    public String GetUsername() {
+        return Objects.requireNonNull(auth.getCurrentUser()).getDisplayName();
+    }
+
+    @Override
+    public void AuthorizeUser(String username, String password) {
+        try {
+            var task = auth.signInWithEmailAndPassword(username, password);
+            Tasks.await(task);
+            if(!task.isSuccessful()) {
+                throw new RuntimeException("Invalid username or password");
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    @Override
+    public void RegisterUser(String username, String password) {
+        try {
+            var task = auth.createUserWithEmailAndPassword(username, password);
+            Tasks.await(task);
+            if(!task.isSuccessful()) {
+                throw new RuntimeException("Invalid username or password");
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    @Override
+    public void ContinueAsGuest() {
+        try {
+            var task = auth.signInAnonymously();
+            Tasks.await(task);
+            if(task.getResult().getUser() == null) {
+                throw new RuntimeException("Invalid username or password");
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    @Override
+    public void LogOut() {
+        auth.signOut();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\mock\MockAuthorizationService.java
+package ru.mirea.kuzenkov.data.repository.mock;
+
+import java.util.Objects;
+
+import ru.mirea.kuzenkov.domain.repository.IAuthorizationService;
+
+public class MockAuthorizationService implements IAuthorizationService {
+    private static final String USERNAME = "qwe";
+    private static final String PASSWORD = "123";
+    private UserStatus status = UserStatus.None;
+
+    @Override
+    public UserStatus GetUserStatus() {
+        return status;
+    }
+    @Override
+    public String GetUsername() {
+        switch (status) {
+            case Client -> {
+                return USERNAME;
+            }
+            case Guest -> {
+                return "Guest";
+            }
+            case None -> {
+                return "Non authorized";
+            }
+            default -> {
+                throw new IllegalStateException("Invalid UserStatus value: " + status);
+            }
+        }
+    }
+
+    @Override
+    public void AuthorizeUser(String username, String password) {
+        if(!username.equals(USERNAME) || !password.equals(PASSWORD)) {
+            throw new RuntimeException("Invalid username or password");
+        }
+        status = UserStatus.Client;
+    }
+    @Override
+    public void RegisterUser(String username, String password) {
+        if(!username.equals(USERNAME) || !password.equals(PASSWORD)) {
+            throw new RuntimeException("Invalid username or password");
+        }
+    }
+    @Override
+    public void ContinueAsGuest() {
+        status = UserStatus.Guest;
+    }
+    @Override
+    public void LogOut() {
+        status = UserStatus.None;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\mock\MockBookmarkRepository.java
+package ru.mirea.kuzenkov.data.repository.mock;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
+import ru.mirea.kuzenkov.domain.dto.Bookmark;
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+
+public class MockBookmarkRepository implements IBookmarkRepository {
+    private final Set<Bookmark> Bookmarks = new HashSet<>();
+    @Override
+    public Set<Bookmark> ListBookmarks() {
+        return Bookmarks;
+    }
+    @Override
+    public void AddBookmark(Bookmark bookmark) {
+        Bookmarks.add(bookmark);
+    }
+    @Override
+    public void RemoveBookmark(Bookmark bookmark) {
+        Bookmarks.remove(bookmark);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\mock\MockPlantRecognizer.java
+package ru.mirea.kuzenkov.data.repository.mock;
+
+import ru.mirea.kuzenkov.domain.repository.IPlantRecognizer;
+
+public class MockPlantRecognizer implements IPlantRecognizer {
+    @Override
+    public String RecognizePlant(byte[] photo) {
+        return null;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\mock\MockPlantRepository.java
+package ru.mirea.kuzenkov.data.repository.mock;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class MockPlantRepository implements IPlantRepository {
+    private final Map<String, PlantInfo> Plants = new HashMap<>();
+    public MockPlantRepository() {
+        Plants.put("111", new PlantInfo("111", "", "qqq"));
+        Plants.put("222", new PlantInfo("222", "", "www"));
+        Plants.put("333", new PlantInfo("333", "", "eee"));
+    }
+
+    @Override
+    public PlantInfo GetPlantInfo(String title) {
+        return Plants.get(title);
+    }
+
+    @Override
+    public Set<String> GetPlantList() {
+        return Plants.keySet();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\network\NetworkBookmarkRepository.java
+package ru.mirea.kuzenkov.data.repository.network;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import ru.mirea.kuzenkov.domain.dto.Bookmark;
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+
+public class NetworkBookmarkRepository implements IBookmarkRepository {
+    private final Set<Bookmark> Bookmarks = new HashSet<>();
+    @Override
+    public Set<Bookmark> ListBookmarks() {
+        return Bookmarks;
+    }
+    @Override
+    public void AddBookmark(Bookmark bookmark) {
+        Bookmarks.add(bookmark);
+    }
+    @Override
+    public void RemoveBookmark(Bookmark bookmark) {
+        Bookmarks.remove(bookmark);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\network\TreflePlantRepository.java
+package ru.mirea.kuzenkov.data.repository.network;
+
+import android.util.Log;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import ru.mirea.kuzenkov.data.repository.network.dto.TreflePlantInfoListDto;
+import ru.mirea.kuzenkov.data.repository.network.service.TreflePlantApi;
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class TreflePlantRepository implements IPlantRepository {
+    private TreflePlantApi treflePlantApi;
+    private final String apiKey;
+
+    public TreflePlantRepository(String apiKey) {
+        treflePlantApi = new Retrofit.Builder()
+            .baseUrl("https://trefle.io")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build().create(TreflePlantApi.class);
+        this.apiKey = apiKey;
+    }
+
+    @Override
+    public PlantInfo GetPlantInfo(String title) {
+        try {
+            var result = treflePlantApi.getPlantInfo(title, apiKey).execute();
+            if(result.code() != 200) {
+                return null;
+            } else {
+                return TrefleDtoToDomainDto(result.body().getTreflePlantInfo());
+            }
+        } catch (IOException e) {
+            return null;
+        }
+    }
+    @Override
+    public Set<String> GetPlantList() {
+        try {
+            var result = treflePlantApi.getPlantTitles(1, apiKey).execute();
+            if(result.code() != 200) {
+                return Collections.emptySet();
+            } else {
+                return result.body().getTreflePlantTitles().stream().
+                        map(treflePlantInfoDto -> treflePlantInfoDto.getTitle()).
+                        collect(Collectors.toSet());
+            }
+        } catch (IOException e) {
+            return Collections.emptySet();
+        }
+    }
+
+    private static PlantInfo TrefleDtoToDomainDto(TreflePlantInfoListDto.TreflePlantInfoDto info) {
+
+
+
+        var plantInfoTitle = info.getCommonName();
+        if(plantInfoTitle == null) {
+            plantInfoTitle = info.getScientifiName();
+        }
+        if(plantInfoTitle == null) {
+            plantInfoTitle = "undefined...";
+        }
+
+        return new PlantInfo(
+                plantInfoTitle,
+                info.getImageUrl(),
+                String.format("Scientific name: %s\nAuthor: %s\nYear: %d\n", info.getScientifiName(), info.getAuthor(), info.getYear())
+        );
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\network\dto\TreflePlantInfoListDto.java
+package ru.mirea.kuzenkov.data.repository.network.dto;
+
+import androidx.annotation.NonNull;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.google.gson.annotations.Expose;
+import com.google.gson.annotations.SerializedName;
+
+import java.util.List;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class TreflePlantInfoListDto {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public class TreflePlantInfoDto {
+        @SerializedName("common_name") @Expose private String CommonName;
+        @SerializedName("scientific_name") @Expose private String ScientifiName;
+        @SerializedName("author") @Expose private String Author;
+        @SerializedName("year") @Expose private Integer Year;
+        @SerializedName("synonyms") @Expose private List<String> Synonyms;
+        @SerializedName("image_url") @Expose private String ImageUrl;
+
+        public TreflePlantInfoDto(String commonName, String scientifiName, String author, Integer year, List<String> synonyms, String imageUrl) {
+            CommonName = commonName;
+            ScientifiName = scientifiName;
+            Author = author;
+            Year = year;
+            Synonyms = synonyms;
+            ImageUrl = imageUrl;
+        }
+        public String getCommonName() {
+            return CommonName;
+        }
+        public String getScientifiName() {
+            return ScientifiName;
+        }
+        public String getAuthor() {
+            return Author;
+        }
+        public Integer getYear() {
+            return Year;
+        }
+        public List<String> getSynonyms() {
+            return Synonyms;
+        }
+        public String getImageUrl() {
+            return ImageUrl;
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            return String.format("[TreflePlantInfoDto][%s/%s/%s/%d/%s]", CommonName, ScientifiName, Author, Year, ImageUrl);
+        }
+    }
+
+    @SerializedName("data") @Expose private TreflePlantInfoDto TreflePlantInfo;
+    public TreflePlantInfoListDto() {}
+    public TreflePlantInfoListDto(TreflePlantInfoDto treflePlantInfo) { TreflePlantInfo = treflePlantInfo; }
+    public TreflePlantInfoDto getTreflePlantInfo() {
+        return TreflePlantInfo;
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return String.format("[TreflePlantInfoListDto][%s]", TreflePlantInfo.toString());
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\network\dto\TreflePlantTitleListDto.java
+package ru.mirea.kuzenkov.data.repository.network.dto;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.google.gson.annotations.Expose;
+import com.google.gson.annotations.SerializedName;
+
+import java.util.List;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class TreflePlantTitleListDto {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public class TreflePlantTitleDto {
+        @SerializedName("slug") @Expose private String Title;
+        public TreflePlantTitleDto() {}
+        public TreflePlantTitleDto(String title) { Title = title; }
+        public String getTitle() { return Title; }
+    }
+
+    @SerializedName("data") @Expose private List<TreflePlantTitleDto> TreflePlantTitles;
+
+    public TreflePlantTitleListDto() {}
+    public TreflePlantTitleListDto(List<TreflePlantTitleDto> treflePlantTitles) {
+        TreflePlantTitles = treflePlantTitles;
+    }
+    public List<TreflePlantTitleDto> getTreflePlantTitles() {
+        return TreflePlantTitles;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\network\service\TreflePlantApi.java
+package ru.mirea.kuzenkov.data.repository.network.service;
+
+import retrofit2.Call;
+import retrofit2.http.GET;
+import retrofit2.http.Path;
+import retrofit2.http.Query;
+import ru.mirea.kuzenkov.data.repository.network.dto.TreflePlantInfoListDto;
+import ru.mirea.kuzenkov.data.repository.network.dto.TreflePlantTitleListDto;
+
+public interface TreflePlantApi {
+    @GET("api/v1/plants")
+    Call<TreflePlantTitleListDto> getPlantTitles(@Query("page") int page, @Query("token") String apiKey);
+
+    @GET("api/v1/plants/{plant_id}")
+    Call<TreflePlantInfoListDto> getPlantInfo(@Path("plant_id") String plant_id, @Query("token") String apiKey);
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\room\ApplicationDatabase.java
+package ru.mirea.kuzenkov.data.repository.room;
+
+import androidx.room.Database;
+import androidx.room.RoomDatabase;
+
+import ru.mirea.kuzenkov.data.repository.room.dao.RoomBookmarkDao;
+import ru.mirea.kuzenkov.data.repository.room.dao.RoomPlantInfoDao;
+import ru.mirea.kuzenkov.data.repository.room.dto.RoomBookmarkDto;
+import ru.mirea.kuzenkov.data.repository.room.dto.RoomPlantInfoDto;
+
+@Database(entities = { RoomBookmarkDto.class, RoomPlantInfoDto.class }, version = 1)
+public abstract class ApplicationDatabase extends RoomDatabase {
+    public abstract RoomPlantInfoDao roomPlantInfoDao();
+    public abstract RoomBookmarkDao roomBookmarkDao();
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\room\RoomBookmarkRepository.java
+package ru.mirea.kuzenkov.data.repository.room;
+
+import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import ru.mirea.kuzenkov.data.repository.room.dao.RoomBookmarkDao;
+import ru.mirea.kuzenkov.data.repository.room.dto.RoomBookmarkDto;
+import ru.mirea.kuzenkov.domain.dto.Bookmark;
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+
+public class RoomBookmarkRepository implements IBookmarkRepository {
+    private final RoomBookmarkDao roomBookmarkDao;
+    public RoomBookmarkRepository(RoomBookmarkDao roomBookmarkDao) {
+        this.roomBookmarkDao = roomBookmarkDao;
+    }
+
+
+    @Override
+    public Set<Bookmark> ListBookmarks() {
+        return roomBookmarkDao.list().stream().
+            map(roomBookmarkDto -> new Bookmark(roomBookmarkDto.Title)).
+            collect(Collectors.toSet());
+    }
+    @Override
+    public void AddBookmark(Bookmark bookmark) {
+        var roomBookmark = new RoomBookmarkDto();
+        roomBookmark.Title = bookmark.getTitle();
+        roomBookmarkDao.insert(roomBookmark);
+    }
+    @Override
+    public void RemoveBookmark(Bookmark bookmark) {
+        var roomBookmark = new RoomBookmarkDto();
+        roomBookmark.Title = bookmark.getTitle();
+        roomBookmarkDao.delete(roomBookmark);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\room\RoomPlantRepository.java
+package ru.mirea.kuzenkov.data.repository.room;
+
+import android.util.Log;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import ru.mirea.kuzenkov.data.repository.room.dao.RoomPlantInfoDao;
+import ru.mirea.kuzenkov.data.repository.room.dto.RoomPlantInfoDto;
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class RoomPlantRepository implements IPlantRepository {
+    private final IPlantRepository plantRepositoryOrigin;
+    private final RoomPlantInfoDao roomPlantInfoDao;
+    public RoomPlantRepository(IPlantRepository plantRepositoryOrigin, RoomPlantInfoDao roomPlantInfoDao) {
+        this.plantRepositoryOrigin = plantRepositoryOrigin;
+        this.roomPlantInfoDao = roomPlantInfoDao;
+    }
+
+    @Override
+    public PlantInfo GetPlantInfo(String title) {
+        return getCurrentInfo(title);
+    }
+    @Override
+    public Set<String> GetPlantList() {
+        var remotePlants = plantRepositoryOrigin.GetPlantList();
+        if(remotePlants != null && !remotePlants.isEmpty()) {
+            return remotePlants;
+        }
+        return roomPlantInfoDao.list().stream().map(info -> info.Title).collect(Collectors.toSet());
+    }
+    private PlantInfo setLocalInfo(PlantInfo info) {
+        var newInfo = new RoomPlantInfoDto();
+        newInfo.Title = info.getTitle();
+        newInfo.ImageUri = info.getImageUri();
+        newInfo.Description = info.getDescription();
+        roomPlantInfoDao.insert(newInfo);
+        return getCurrentInfo(info.getTitle());
+    }
+    private PlantInfo getCurrentInfo(String title) {
+        var localInfo = roomPlantInfoDao.getByTitle(title);
+        if(localInfo != null) {
+            return new PlantInfo(localInfo.Title, localInfo.ImageUri, localInfo.Description);
+        }
+
+        var remoteInfo = plantRepositoryOrigin.GetPlantInfo(title);
+
+        if(remoteInfo != null) {
+            return setLocalInfo(remoteInfo);
+        }
+
+        return null;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\room\dao\RoomBookmarkDao.java
+package ru.mirea.kuzenkov.data.repository.room.dao;
+
+import androidx.room.Dao;
+import androidx.room.Delete;
+import androidx.room.Insert;
+import androidx.room.Query;
+
+import java.util.List;
+
+import ru.mirea.kuzenkov.data.repository.room.dto.RoomBookmarkDto;
+
+@Dao
+public interface RoomBookmarkDao {
+    @Query("SELECT * FROM plant_bookmark")
+    List<RoomBookmarkDto> list();
+    @Insert
+    void insert(RoomBookmarkDto roomBookmarkDto);
+    @Delete
+    void delete(RoomBookmarkDto roomBookmarkDto);
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\room\dao\RoomPlantInfoDao.java
+package ru.mirea.kuzenkov.data.repository.room.dao;
+
+import androidx.room.Dao;
+import androidx.room.Delete;
+import androidx.room.Insert;
+import androidx.room.OnConflictStrategy;
+import androidx.room.Query;
+import androidx.room.Update;
+
+import java.util.List;
+
+import ru.mirea.kuzenkov.data.repository.room.dto.RoomPlantInfoDto;
+
+@Dao
+public interface RoomPlantInfoDao {
+    @Query("SELECT * FROM plant_info")
+    List<RoomPlantInfoDto> list();
+    @Query("SELECT * FROM plant_info WHERE Title = :Title")
+    RoomPlantInfoDto getByTitle(String Title);
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insert(RoomPlantInfoDto trackedLocationDto);
+    @Update
+    void update(RoomPlantInfoDto trackedLocationDto);
+    @Delete
+    void delete(RoomPlantInfoDto trackedLocationDto);
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\room\dto\RoomBookmarkDto.java
+package ru.mirea.kuzenkov.data.repository.room.dto;
+
+import androidx.annotation.NonNull;
+import androidx.room.Entity;
+
+@Entity(tableName = "plant_bookmark", primaryKeys = { "Title" })
+public class RoomBookmarkDto {
+    @NonNull public String Title;
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\data\src\main\java\ru\mirea\kuzenkov\data\repository\room\dto\RoomPlantInfoDto.java
+package ru.mirea.kuzenkov.data.repository.room.dto;
+
+import androidx.annotation.NonNull;
+import androidx.room.Entity;
+
+@Entity(tableName = "plant_info", primaryKeys = { "Title" })
+public class RoomPlantInfoDto {
+    @NonNull public String Title;
+    public String ImageUri;
+    public String Description;
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\dto\Bookmark.java
+package ru.mirea.kuzenkov.domain.dto;
+
+public class Bookmark {
+    private final String Title;
+    public Bookmark(String title) {
+        Title = title;
+    }
+    public String getTitle() {
+        return Title;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\dto\PlantInfo.java
+package ru.mirea.kuzenkov.domain.dto;
+
+public class PlantInfo {
+    private final String Title;
+    private final String ImageUri;
+    private final String Description;
+
+    public PlantInfo(String title, String imageUri, String description) {
+        Title = title;
+        ImageUri = imageUri;
+        Description = description;
+    }
+
+    public String getTitle() {
+        return Title;
+    }
+    public String getImageUri() {
+        return ImageUri;
+    }
+    public String getDescription() {
+        return Description;
+    }
+}
+
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\repository\IAuthorizationService.java
+package ru.mirea.kuzenkov.domain.repository;
+
+import android.os.AsyncTask;
+
+public interface IAuthorizationService {
+    public enum UserStatus {
+        Client,
+        Guest,
+        None
+    }
+
+    UserStatus GetUserStatus();
+    String GetUsername();
+
+    void AuthorizeUser(String username, String password);
+    void RegisterUser(String username, String password);
+    void ContinueAsGuest();
+    void LogOut();
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\repository\IBookmarkRepository.java
+package ru.mirea.kuzenkov.domain.repository;
+
+import java.util.Set;
+
+import ru.mirea.kuzenkov.domain.dto.Bookmark;
+
+public interface IBookmarkRepository {
+    Set<Bookmark> ListBookmarks();
+    void AddBookmark(Bookmark bookmark);
+    void RemoveBookmark(Bookmark bookmark);
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\repository\IPlantRecognizer.java
+package ru.mirea.kuzenkov.domain.repository;
+
+public interface IPlantRecognizer {
+    String RecognizePlant(byte[] photo);
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\repository\IPlantRepository.java
+package ru.mirea.kuzenkov.domain.repository;
+
+import java.util.List;
+import java.util.Set;
+
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+
+public interface IPlantRepository {
+    PlantInfo GetPlantInfo(String title);
+    Set<String> GetPlantList();
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\auth\AuthorizeUser.java
+package ru.mirea.kuzenkov.domain.usecase.auth;
+
+import ru.mirea.kuzenkov.domain.repository.IAuthorizationService;
+
+public class AuthorizeUser {
+    private final IAuthorizationService authorizationService;
+    public AuthorizeUser(IAuthorizationService authorizationService) {
+        this.authorizationService = authorizationService;
+    }
+
+    public void execute(String username, String password) {
+        authorizationService.AuthorizeUser(username, password);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\auth\ContinueAsGuest.java
+package ru.mirea.kuzenkov.domain.usecase.auth;
+
+import ru.mirea.kuzenkov.domain.repository.IAuthorizationService;
+
+public class ContinueAsGuest {
+    private final IAuthorizationService authorizationService;
+    public ContinueAsGuest(IAuthorizationService authorizationService) {
+        this.authorizationService = authorizationService;
+    }
+    
+    public void execute() {
+        authorizationService.ContinueAsGuest();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\auth\LogOut.java
+package ru.mirea.kuzenkov.domain.usecase.auth;
+
+import ru.mirea.kuzenkov.domain.repository.IAuthorizationService;
+
+public class LogOut {
+    private final IAuthorizationService authorizationService;
+    public LogOut(IAuthorizationService authorizationService) {
+        this.authorizationService = authorizationService;
+    }
+    
+    public void execute() {
+        authorizationService.LogOut();
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\auth\RegisterUser.java
+package ru.mirea.kuzenkov.domain.usecase.auth;
+
+import ru.mirea.kuzenkov.domain.repository.IAuthorizationService;
+
+public class RegisterUser {
+    private final IAuthorizationService authorizationService;
+    public RegisterUser(IAuthorizationService authorizationService) {
+        this.authorizationService = authorizationService;
+    }
+    
+    public void execute(String username, String password) {
+        authorizationService.RegisterUser(username, password);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\bookmark\AddBookmark.java
+package ru.mirea.kuzenkov.domain.usecase.bookmark;
+
+import ru.mirea.kuzenkov.domain.dto.Bookmark;
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+
+public class AddBookmark {
+    private final IBookmarkRepository bookmarkRepository;
+    public AddBookmark(IBookmarkRepository bookmarkRepository) {
+        this.bookmarkRepository = bookmarkRepository;
+    }
+
+    public void execute(Bookmark bookmark) {
+        bookmarkRepository.AddBookmark(bookmark);
+    }
+}
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\bookmark\ListBookmarks.java
+package ru.mirea.kuzenkov.domain.usecase.bookmark;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+import ru.mirea.kuzenkov.domain.dto.Bookmark;
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class ListBookmarks {
+    private final IBookmarkRepository bookmarkRepository;
+    private final IPlantRepository plantRepository;
+
+    public ListBookmarks(IBookmarkRepository bookmarkRepository, IPlantRepository plantRepository) {
+        this.bookmarkRepository = bookmarkRepository;
+        this.plantRepository = plantRepository;
+    }
+
+    public List<PlantInfo> execute() {
+        List<PlantInfo> result = new ArrayList<>();
+        var bookmarks = bookmarkRepository.ListBookmarks();
+        for(var plantId: plantRepository.GetPlantList()) {
+            if(bookmarks.contains(new Bookmark(plantId))) {
+                result.add(plantRepository.GetPlantInfo(plantId));
+            }
+        }
+        return result;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\bookmark\RemoveBookmark.java
+package ru.mirea.kuzenkov.domain.usecase.bookmark;
+
+import ru.mirea.kuzenkov.domain.dto.Bookmark;
+import ru.mirea.kuzenkov.domain.repository.IBookmarkRepository;
+
+public class RemoveBookmark {
+    private final IBookmarkRepository bookmarkRepository;
+    public RemoveBookmark(IBookmarkRepository bookmarkRepository) {
+        this.bookmarkRepository = bookmarkRepository;
+    }
+
+    public void execute(Bookmark bookmark) {
+        bookmarkRepository.RemoveBookmark(bookmark);
+    }
+}
+
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\plant\GetPlantInfo.java
+package ru.mirea.kuzenkov.domain.usecase.plant;
+
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class GetPlantInfo {
+    private final IPlantRepository plantRepository;
+    public GetPlantInfo(IPlantRepository plantRepository) {
+        this.plantRepository = plantRepository;
+    }
+    public PlantInfo execute(String title) {
+        return plantRepository.GetPlantInfo(title);
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\plant\GetPlantList.java
+package ru.mirea.kuzenkov.domain.usecase.plant;
+
+import android.util.Log;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import ru.mirea.kuzenkov.domain.dto.PlantInfo;
+import ru.mirea.kuzenkov.domain.repository.IPlantRepository;
+
+public class GetPlantList {
+    private final IPlantRepository plantRepository;
+    public GetPlantList(IPlantRepository plantRepository) {
+        this.plantRepository = plantRepository;
+    }
+    public List<PlantInfo> execute() {
+        List<PlantInfo> result = new ArrayList<>();
+        for(var plantId: plantRepository.GetPlantList()) {
+
+            result.add(plantRepository.GetPlantInfo(plantId));
+        }
+        return result;
+    }
+}
+
+
+C:\Users\User\Documents\VUZ41\VedroII\pz5\PlantBook\domain\src\main\java\ru\mirea\kuzenkov\domain\usecase\plant\RecognizePlant.java
+package ru.mirea.kuzenkov.domain.usecase.plant;
+
+import ru.mirea.kuzenkov.domain.repository.IPlantRecognizer;
+
+public class RecognizePlant {
+    private final IPlantRecognizer plantRecognizer;
+    public RecognizePlant(IPlantRecognizer plantRecognizer) {
+        this.plantRecognizer = plantRecognizer;
+    }
+    String execute(byte[] photo) {
+        return plantRecognizer.RecognizePlant(photo);
+    }
+}
+
+
